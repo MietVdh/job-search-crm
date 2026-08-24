@@ -1,0 +1,8 @@
+[project]
+name = "career-crm"
+version = "0.1.0"
+description = "Personal career CRM and job search manager"
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "fastapi[standard]>=0.141,<0.142",
+]
