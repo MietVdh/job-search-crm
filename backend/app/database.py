@@ -13,6 +13,11 @@ engine = create_engine(
 
 SessionFactory = sessionmaker(engine)
 
+def get_session():
+    with SessionFactory() as session:
+        yield session
+
+
 
 class Base(DeclarativeBase):
     pass
