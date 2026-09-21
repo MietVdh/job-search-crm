@@ -1,6 +1,6 @@
 from sqlalchemy.orm import declarative_base
 from typing import Annotated
-from pydantic import BaseModel, ConfigDict, PlainSerializer
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, PlainSerializer
 
 from datetime import date, datetime
 
@@ -22,3 +22,12 @@ class JobPostingResponse(BaseModel):
     note: str | None 
     cover_letter_required: bool
 
+
+class JobPostingCreate(BaseModel):
+    title: str = Field(max_length=200)
+    company: str = Field(max_length=200)
+    url: HttpUrl
+    location: str | None = Field(default=None, max_length=200)
+    salary: str | None = Field(default=None, max_length=100)
+    note: str | None = None
+    cover_letter_required: bool = False
