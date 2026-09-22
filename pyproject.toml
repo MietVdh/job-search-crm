@@ -5,4 +5,11 @@ description = "Personal career CRM and job search manager"
 requires-python = ">=3.14,<3.15"
 dependencies = [
     "fastapi[standard]>=0.141,<0.142",
+    "pydantic>=2.13,<3",
+    "sqlalchemy>=2.0,<3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1,<10",
 ]
