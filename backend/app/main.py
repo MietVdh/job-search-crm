@@ -31,3 +31,5 @@ def create_job(job: JobPostingCreate, session: Session = Depends(get_session)):
             status_code=status.HTTP_409_CONFLICT,
             detail="A job posting with that URL already exists."
         )
+
+
