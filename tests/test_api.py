@@ -52,4 +52,27 @@ def test_create_job_posting(test_session_override):
     assert data["cover_letter_required"] is False
 
 
+def test_create_duplicate_job_posting(test_session_override):
+    original_payload = {
+        "title": "Software Developer",
+        "company": "Dotcom Inc",
+        "url": "http://www.example.com/777"
+    }
+
+    original_response = client.post("/job-postings", json=original_payload)
+    assert original_response.status_code == 201
+
+    duplicate_payload = {
+        "title": "QA Tester",
+        "company": "ABC Corporation",
+        "url": "http://www.example.com/777"
+    }
+    
+    duplicate_response = client.post("/job-postings", json=duplicate_payload)
+    assert duplicate_response.status_code == 409
+    data = duplicate_response.json()
+    assert data == {
+        "detail": "A job posting with that URL already exists."
+    }
+
 
