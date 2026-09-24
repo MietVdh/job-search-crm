@@ -1,9 +1,10 @@
-from fastapi import FastAPI, Depends, status, HTTPException
+from fastapi import FastAPI, Depends, status, HTTPException, Query
 from sqlalchemy.orm import Session
+from typing import Annotated
 
 from .database import get_session
 from .crud import get_job_postings, create_job_posting, DuplicateJobPostingError
-from .schemas import JobPostingResponse, JobPostingCreate
+from .schemas import JobPostingResponse, JobPostingListResponse, JobPostingCreate
 
 app = FastAPI()
 
@@ -13,9 +14,21 @@ def hello():
     return {"message": "Hello, Career CRM!"}
 
 
-@app.get("/job-postings", response_model=list[JobPostingResponse])
-def job_postings(session: Session = Depends(get_session)):
-    return get_job_postings(session)
+@app.get("/job-postings", response_model=JobPostingListResponse)
+def job_postings(
+    page: Annotated[int, Query(ge=1)] = 1, 
+    page_size: Annotated[int, Query(ge=1, le=50)] = 25,
+    session: Session = Depends(get_session)
+):
+    offset = (page - 1) * page_size
+    postings, total = get_job_postings(session, offset, page_size)
+
+    return JobPostingListResponse(
+        items=postings,
+        page=page,
+        page_size=page_size,
+        total=total
+    )
 
 
 @app.post(

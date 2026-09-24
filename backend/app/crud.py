@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -10,10 +10,20 @@ class DuplicateJobPostingError(Exception):
     pass
 
 
-def get_job_postings(session: Session) -> list[JobPosting]:
-    stmt = select(JobPosting)
-    return session.scalars(stmt).all()
-
+def get_job_postings(
+    session: Session, 
+    offset: int, 
+    limit: int,
+) -> tuple[list[JobPosting], int]:
+    total_postings = session.scalar(select(func.count(JobPosting.id)))
+    postings_stmt = (
+        select(JobPosting)
+        .order_by(JobPosting.saved_at, JobPosting.id)
+        .limit(limit)
+        .offset(offset)
+    )
+    postings = session.scalars(postings_stmt).all()
+    return postings, total_postings
 
 def create_job_posting(session: Session, job_posting: JobPostingCreate) -> JobPosting:
     job = JobPosting(

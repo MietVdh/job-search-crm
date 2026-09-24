@@ -23,6 +23,13 @@ class JobPostingResponse(BaseModel):
     cover_letter_required: bool
 
 
+class JobPostingListResponse(BaseModel):
+    items: list[JobPostingResponse]
+    page: int = Field(gt=0)
+    page_size: int = Field(gt=0)
+    total: int = Field(ge=0)
+
+
 class JobPostingCreate(BaseModel):
     title: str = Field(max_length=200)
     company: str = Field(max_length=200)
