@@ -107,16 +107,18 @@ def test_get_job_postings_uses_default_pagination_parameters(session, test_sessi
     assert [posting["title"] for posting in data["items"]] == ["A", "B"]
 
 
-def test_get_job_postings_rejects_invalid_pagination_parameters():
+@pytest.mark.parametrize(
+    "query_string",
+    [
+        pytest.param("?page=0", id="page-zero"),
+        pytest.param("?page_size=0", id="page-size-zero"),
+        pytest.param("?page_size=51", id="page-size-too-large"),
+    ],
+)
+def test_get_job_postings_rejects_invalid_pagination_parameters(query_string):
     
-    page_zero_response = client.get("/job-postings?page=0")
-    assert page_zero_response.status_code == 422
-
-    page_size_zero_response = client.get("/job-postings?page_size=0")
-    assert page_size_zero_response.status_code == 422
-
-    page_size_too_large_response = client.get("/job-postings?page_size=51")
-    assert page_size_too_large_response.status_code == 422
+    response = client.get(f"/job-postings{query_string}")
+    assert response.status_code == 422
 
 
 def test_get_job_postings_returns_empty_page_when_page_is_beyond_end(session, test_session_override):
@@ -132,6 +134,3 @@ def test_get_job_postings_returns_empty_page_when_page_is_beyond_end(session, te
     assert data["total"] == 3
     assert data["items"] == []
     
-
-
-
