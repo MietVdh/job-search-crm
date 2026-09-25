@@ -15,14 +15,17 @@ def get_job_postings(
     offset: int, 
     limit: int,
 ) -> tuple[list[JobPosting], int]:
+    
     total_postings = session.scalar(select(func.count(JobPosting.id)))
+
     postings_stmt = (
         select(JobPosting)
-        .order_by(JobPosting.saved_at, JobPosting.id)
+        .order_by(JobPosting.saved_at.desc(), JobPosting.id.desc())
         .limit(limit)
         .offset(offset)
     )
     postings = session.scalars(postings_stmt).all()
+
     return postings, total_postings
 
 def create_job_posting(session: Session, job_posting: JobPostingCreate) -> JobPosting:
