@@ -1,7 +1,6 @@
 from fastapi.testclient import TestClient
 from backend.app.main import app, get_session
 from backend.app.schemas import JobPostingResponse
-from .test_crud import engine, session
 import pytest
 from datetime import date
 
@@ -13,8 +12,6 @@ def test_hello():
     response = client.get("/hello")
     assert response.status_code == 200
     assert response.json() == {"message": "Hello, Career CRM!"}
-
-
 
 
 
