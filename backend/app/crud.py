@@ -2,7 +2,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from backend.app.models import JobPosting
+from backend.app.models import JobPosting, Application
 from .schemas import JobPostingCreate
 
 
@@ -53,5 +53,13 @@ def create_job_posting(session: Session, job_posting: JobPostingCreate) -> JobPo
 
 
 
+# Applications
 
+def create_application(session):
+    pass
+
+
+def get_job_applications(session):
+    
+    return session.scalars(select(Application)).all()
     

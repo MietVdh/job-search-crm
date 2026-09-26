@@ -1,8 +1,11 @@
 import pytest
 from datetime import datetime
-from backend.app.crud import create_job_posting, get_job_postings, DuplicateJobPostingError
+from sqlalchemy.exc import IntegrityError
+
+from backend.app.crud import create_job_posting, get_job_postings, DuplicateJobPostingError, get_job_applications
 from backend.app.schemas import JobPostingCreate
-from tests.helpers import create_test_job_posting
+from backend.app.models import Application, ApplicationMethod, ApplicationStatus
+from tests.helpers import create_test_job_posting, create_test_job_posting_without_url, create_test_application
 
 
 def test_database_starts_empty(session):
@@ -11,7 +14,7 @@ def test_database_starts_empty(session):
     assert postings == []
 
 
-def test_duplicate_job_posting_error(session):
+def test_duplicate_job_posting_url_error(session):
     # Add first job posting to DB
     job_posting = JobPostingCreate(title="test developer", company="company inc.", url="http://www.example.com/666")
     create_job_posting(session, job_posting)
@@ -24,6 +27,15 @@ def test_duplicate_job_posting_error(session):
 
     postings, total = get_job_postings(session, offset=0, limit=25)
     assert total == 1
+
+
+def test_create_multiple_job_postings_with_no_url(session):
+    create_test_job_posting_without_url(session, title="A", saved_at=datetime(2026, 1, 3, 12, 0, 0))
+    create_test_job_posting_without_url(session, title="B", saved_at=datetime(2026, 1, 2, 12, 0, 0))
+
+    postings, total = get_job_postings(session, offset=0, limit=25)
+    assert total == 2
+    assert all(posting.url is None for posting in postings)
 
 
 def test_get_job_postings_returns_requested_page_and_total(session):
@@ -83,3 +95,74 @@ def test_get_job_postings_orders_by_id_when_identical_saved_at(session):
 
     assert postings[0].saved_at == postings[1].saved_at
     assert postings[0].id > postings[1].id
+
+
+def test_create_job_application(session):
+    job_posting = create_test_job_posting(session, title="A", saved_at=datetime(2026, 1, 3, 12, 0, 0))
+
+    job_application = create_test_application(session, job_posting.id)
+
+    assert job_application.job_posting_id == job_posting.id
+    assert job_application.status == ApplicationStatus.APPLIED
+    assert job_application.job_posting is job_posting
+
+
+
+def test_create_job_application_without_job_posting_error(session):
+    job_application = Application(
+        how_applied=ApplicationMethod.COMPANY_WEBSITE,
+        status=ApplicationStatus.APPLIED,
+    )
+
+    session.add(job_application)
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+
+def test_create_job_application_with_nonexistend_job_posting_id_error(session):
+    job_application = Application(
+        job_posting_id=999999,
+        how_applied=ApplicationMethod.COMPANY_WEBSITE,
+        status=ApplicationStatus.APPLIED,
+    )
+
+    session.add(job_application)
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+
+
+def test_multiple_applications_for_job_posting_error(session):
+    job_posting = create_test_job_posting(session, title="A", saved_at=datetime(2026, 1, 3, 12, 0, 0))
+    
+    create_test_application(session, job_posting.id)
+
+    with pytest.raises(IntegrityError):
+        create_test_application(session, job_posting.id)
+
+
+def test_delete_job_posting_with_application_error(session):
+    job_posting = create_test_job_posting(session, title="A", saved_at=datetime(2026, 1, 3, 12, 0, 0))
+        
+    create_test_application(session, job_posting.id)
+
+    session.delete(job_posting)
+
+    with pytest.raises(IntegrityError):
+        session.commit()
+
+    session.rollback()
+
+
+def test_delete_job_posting_without_application(session):
+    job_posting = create_test_job_posting(session, title="A", saved_at=datetime(2026, 1, 3, 12, 0, 0))
+
+    session.delete(job_posting)
+    session.commit()
+
+    postings, total = get_job_postings(session, offset=0, limit=25)
+    assert total == 0
+    assert postings == []

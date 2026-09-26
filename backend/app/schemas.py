@@ -38,3 +38,9 @@ class JobPostingCreate(BaseModel):
     salary: str | None = Field(default=None, max_length=100)
     note: str | None = None
     cover_letter_required: bool = False
+
+
+
+# Applications
+class ApplicationCreate(BaseModel):
+    pass
