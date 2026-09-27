@@ -1,12 +1,21 @@
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from datetime import datetime
 
-from backend.app.models import JobPosting, Application
+from backend.app.models import JobPosting, Application, ApplicationMethod, ApplicationStatus
 from .schemas import JobPostingCreate
 
 
 class DuplicateJobPostingError(Exception):
+    pass
+
+
+class DuplicateApplicationError(Exception):
+    pass
+
+
+class JobPostingNotFoundError(Exception):
     pass
 
 
@@ -31,12 +40,12 @@ def get_job_postings(
 def create_job_posting(session: Session, job_posting: JobPostingCreate) -> JobPosting:
     job = JobPosting(
         title=job_posting.title,
-        company = job_posting.company,
-        url = str(job_posting.url),
-        location = job_posting.location,
-        salary = job_posting.salary,
-        note = job_posting.note,
-        cover_letter_required = job_posting.cover_letter_required
+        company=job_posting.company,
+        url=str(job_posting.url),
+        location=job_posting.location,
+        salary=job_posting.salary,
+        note=job_posting.note,
+        cover_letter_required=job_posting.cover_letter_required
     )
 
     try:
@@ -55,8 +64,38 @@ def create_job_posting(session: Session, job_posting: JobPostingCreate) -> JobPo
 
 # Applications
 
-def create_application(session):
-    pass
+def create_application(
+    session: Session,
+    job_posting_id: int,
+    how_applied: ApplicationMethod,
+    *,
+    applied_at: datetime | None = None
+) -> Application:
+    if applied_at is None:
+        applied_at = datetime.now()
+    application = Application(
+        job_posting_id=job_posting_id,
+        applied_at=applied_at,
+        how_applied=how_applied,
+    )
+
+    try:
+        session.add(application)
+        session.commit()
+        session.refresh(application)
+        return application
+    
+    except IntegrityError as e:
+        session.rollback()
+
+        if "UNIQUE" in str(e.orig) and "applications.job_posting_id" in str(e.orig) :
+            raise DuplicateApplicationError()
+
+        if "FOREIGN KEY" in str(e.orig):
+            raise JobPostingNotFoundError()
+        
+        raise
+
 
 
 def get_job_applications(session):

@@ -2,7 +2,8 @@ import pytest
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 
-from backend.app.crud import create_job_posting, get_job_postings, DuplicateJobPostingError, get_job_applications
+from backend.app.crud import create_job_posting, get_job_postings, DuplicateJobPostingError
+from backend.app.crud import get_job_applications, create_application, DuplicateApplicationError, JobPostingNotFoundError
 from backend.app.schemas import JobPostingCreate
 from backend.app.models import Application, ApplicationMethod, ApplicationStatus
 from tests.helpers import create_test_job_posting, create_test_job_posting_without_url, create_test_application
@@ -130,7 +131,7 @@ def test_create_job_application_with_nonexistend_job_posting_id_error(session):
 
     session.add(job_application)
 
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IntegrityError): # FOREIGN KEY constraint failed
         session.commit()
 
 
@@ -140,7 +141,7 @@ def test_multiple_applications_for_job_posting_error(session):
     
     create_test_application(session, job_posting.id)
 
-    with pytest.raises(IntegrityError):
+    with pytest.raises(IntegrityError): # UNIQUE constraint failed
         create_test_application(session, job_posting.id)
 
 
@@ -166,3 +167,56 @@ def test_delete_job_posting_without_application(session):
     postings, total = get_job_postings(session, offset=0, limit=25)
     assert total == 0
     assert postings == []
+
+
+def test_create_application(session):
+    job_posting = create_test_job_posting(session, 'A')
+    job_posting_id = job_posting.id
+
+    before = datetime.now()
+
+    application = create_application(session, job_posting_id, ApplicationMethod.EMAIL)
+
+    after = datetime.now()
+
+    assert application.job_posting_id == job_posting_id
+    assert application.how_applied == ApplicationMethod.EMAIL
+    assert application.status == ApplicationStatus.APPLIED
+    assert before <= application.applied_at <= after
+    assert application.last_response_at is None
+
+
+def test_create_application_with_applied_at(session):
+    job_posting = create_test_job_posting(session, 'A')
+    job_posting_id = job_posting.id
+    applied_at = datetime(2026, 9, 25, 9, 0, 0, 0)
+
+    application = create_application(session, job_posting_id, ApplicationMethod.EMAIL, applied_at=applied_at)
+
+    assert application.applied_at == applied_at
+
+
+def test_create_application_missing_job_posting(session):
+
+    with pytest.raises(JobPostingNotFoundError):
+        create_application(session, job_posting_id=9999, how_applied=ApplicationMethod.EMAIL)
+
+    # Verify that session is still useable after error
+    job_posting = create_test_job_posting(session, 'A')
+    job_posting_id = job_posting.id
+
+    application = create_application(session, job_posting_id, ApplicationMethod.EMAIL)
+
+    assert application.job_posting_id == job_posting_id
+    
+
+def test_create_duplicate_application(session):
+    job_posting = create_test_job_posting(session, 'A')
+    job_posting_id = job_posting.id
+
+    create_application(session, job_posting_id, ApplicationMethod.EMAIL)
+
+    with pytest.raises(DuplicateApplicationError):
+        create_application(session, job_posting_id, ApplicationMethod.COMPANY_WEBSITE)
+
+    assert len(get_job_applications(session)) == 1
