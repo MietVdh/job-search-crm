@@ -42,11 +42,13 @@ def create_test_job_posting_without_url(
 def create_test_application(
         session: Session,
         job_posting_id: int,
+        applied_at: datetime | None = None,
         how_applied: ApplicationMethod = ApplicationMethod.COMPANY_WEBSITE,
         status: ApplicationStatus = ApplicationStatus.APPLIED
 ) -> Application:
     application = Application(
         job_posting_id=job_posting_id,
+        applied_at=applied_at,
         how_applied=how_applied,
         status=status
     )

@@ -1,6 +1,6 @@
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from datetime import datetime
 
 from backend.app.models import JobPosting, Application, ApplicationMethod, ApplicationStatus
@@ -98,7 +98,21 @@ def create_application(
 
 
 
-def get_job_applications(session):
-    
-    return session.scalars(select(Application)).all()
+def get_job_applications(
+    session: Session,
+    offset: int,
+    limit: int
+) -> tuple[list[Application], int]:
+
+    total = session.scalar(select(func.count(Application.id)))
+    applications_stmt = (
+        select(Application)
+        .order_by(Application.applied_at.desc(), Application.id.desc())
+        .limit(limit)
+        .offset(offset)
+        .options(selectinload(Application.job_posting))
+    )
+    applications = session.scalars(applications_stmt).all()
+
+    return applications, total
     

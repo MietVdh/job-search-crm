@@ -108,7 +108,6 @@ def test_create_job_application(session):
     assert job_application.job_posting is job_posting
 
 
-
 def test_create_job_application_without_job_posting_error(session):
     job_application = Application(
         how_applied=ApplicationMethod.COMPANY_WEBSITE,
@@ -219,4 +218,73 @@ def test_create_duplicate_application(session):
     with pytest.raises(DuplicateApplicationError):
         create_application(session, job_posting_id, ApplicationMethod.COMPANY_WEBSITE)
 
-    assert len(get_job_applications(session)) == 1
+    assert get_job_applications(session, offset=0, limit=25)[1] == 1
+
+
+def test_get_job_applications_returns_requested_page_and_total(session):
+    # Create three postings
+    posting_a = create_test_job_posting(session, title="A")
+    posting_b = create_test_job_posting(session, title="B")
+    posting_c = create_test_job_posting(session, title="C")
+
+    # Create applications for each job posting
+    application_a = create_test_application(session, posting_a.id, applied_at=datetime(2026, 1, 4, 12, 0, 0))
+    application_b = create_test_application(session, posting_b.id, applied_at=datetime(2026, 1, 6, 12, 0, 0))
+    application_c = create_test_application(session, posting_c.id, applied_at=datetime(2026, 1, 5, 12, 0, 0))
+
+    # Getting first page of results - page_size = 2
+    applications, total = get_job_applications(
+        session,
+        offset=0,
+        limit=2
+    )
+
+    assert total == 3
+    assert applications == [application_b, application_c]
+    assert [application.job_posting for application in applications] == [posting_b, posting_c]
+
+
+def test_get_job_applications_orders_by_id_when_identical_applied_at(session):
+    # Create three postings
+    posting_a = create_test_job_posting(session, title="A")
+    posting_b = create_test_job_posting(session, title="B")
+    posting_c = create_test_job_posting(session, title="C")
+
+    # Create applications for each job posting
+    create_test_application(session, posting_a.id, applied_at=datetime(2026, 9, 6, 12, 0, 0))
+    create_test_application(session, posting_b.id, applied_at=datetime(2026, 9, 6, 12, 0, 0))
+    create_test_application(session, posting_c.id, applied_at=datetime(2026, 9, 5, 12, 0, 0))
+
+    # Getting first page of results - page_size = 2
+    applications, _ = get_job_applications(session, offset=0, limit=2)
+
+    assert applications[0].applied_at == applications[1].applied_at
+    assert applications[0].id > applications[1].id
+
+
+def test_get_job_applications_respects_offset_and_limit(session):
+    # Create three postings
+    posting_a = create_test_job_posting(session, title="A")
+    posting_b = create_test_job_posting(session, title="B")
+    posting_c = create_test_job_posting(session, title="C")
+
+    # Create applications for each job posting
+    application_a = create_test_application(session, posting_a.id, applied_at=datetime(2026, 1, 4, 12, 0, 0))
+    application_b = create_test_application(session, posting_b.id, applied_at=datetime(2026, 1, 6, 12, 0, 0))
+    application_c = create_test_application(session, posting_c.id, applied_at=datetime(2026, 1, 5, 12, 0, 0))
+
+    # Getting first page of results - page_size = 2
+    applications, total = get_job_applications(
+        session,
+        offset=1,
+        limit=1
+    )
+
+    assert total == 3
+    assert [application.job_posting for application in applications] == [posting_c]
+
+
+def test_get_job_applications_database_starts_empty(session):
+    applications, total = get_job_applications(session, offset=0, limit=25)
+    assert total == 0
+    assert applications == []
