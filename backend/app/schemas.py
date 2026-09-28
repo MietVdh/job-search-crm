@@ -1,8 +1,10 @@
 from sqlalchemy.orm import declarative_base
 from typing import Annotated
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, PlainSerializer
+from pydantic import AliasPath, BaseModel, ConfigDict, Field, HttpUrl, PlainSerializer
 
 from datetime import date, datetime
+
+from backend.app.models import ApplicationMethod, ApplicationStatus
 
 DateOnly = Annotated[
     datetime,
@@ -38,6 +40,42 @@ class JobPostingCreate(BaseModel):
     salary: str | None = Field(default=None, max_length=100)
     note: str | None = None
     cover_letter_required: bool = False
+
+
+class ApplicationListItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    job_posting_id: int
+
+    job_title: str = Field(validation_alias=AliasPath("job_posting", "title"))
+    company: str = Field(validation_alias=AliasPath("job_posting", "company"))
+
+    applied_at: DateOnly
+    how_applied: ApplicationMethod
+    status: ApplicationStatus
+    last_response_at: DateOnly | None
+
+
+class ApplicationDetail(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    job_posting_id: int
+
+    job_title: str = Field(validation_alias=AliasPath("job_posting", "title"))
+    company: str = Field(validation_alias=AliasPath("job_posting", "company"))
+    url: str | None = Field(validation_alias=AliasPath("job_posting", "url"))
+    saved_at: DateOnly = Field(validation_alias=AliasPath("job_posting", "saved_at"))
+    location: str | None = Field(validation_alias=AliasPath("job_posting", "location")) 
+    salary: str | None = Field(validation_alias=AliasPath("job_posting", "salary"))
+    note: str | None = Field(validation_alias=AliasPath("job_posting", "note"))
+    cover_letter_required: bool = Field(validation_alias=AliasPath("job_posting", "cover_letter_required"))
+
+    applied_at: DateOnly
+    how_applied: ApplicationMethod
+    status: ApplicationStatus
+    last_response_at: DateOnly | None
 
 
 
