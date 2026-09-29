@@ -2,8 +2,8 @@ import pytest
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 
-from backend.app.crud import create_job_posting, get_job_postings, DuplicateJobPostingError
-from backend.app.crud import get_job_applications, create_application, DuplicateApplicationError, JobPostingNotFoundError
+from backend.app.crud import create_job_posting, get_job_postings, DuplicateJobPostingError, JobPostingNotFoundError
+from backend.app.crud import get_job_applications, create_application, get_job_application, DuplicateApplicationError, ApplicationNotFoundError
 from backend.app.schemas import JobPostingCreate
 from backend.app.models import Application, ApplicationMethod, ApplicationStatus
 from tests.helpers import create_test_job_posting, create_test_job_posting_without_url, create_test_application
@@ -288,3 +288,21 @@ def test_get_job_applications_database_starts_empty(session):
     applications, total = get_job_applications(session, offset=0, limit=25)
     assert total == 0
     assert applications == []
+
+
+# Get a single application
+
+def test_get_job_application_returns_existing_application(session):
+    job_posting = create_test_job_posting(session, "A")
+    application = create_test_application(session, job_posting.id, how_applied=ApplicationMethod.EMAIL)
+
+    returned_application = get_job_application(session, application.id)
+
+    assert returned_application.id == application.id
+    assert returned_application.job_posting.title == "A"
+    assert returned_application.how_applied == ApplicationMethod.EMAIL
+
+
+def test_get_job_application_with_nonexistent_id_raises_error(session):
+    with pytest.raises(ApplicationNotFoundError):
+        get_job_application(session, 9999)

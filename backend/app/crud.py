@@ -1,6 +1,6 @@
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import joinedload, Session, selectinload
 from datetime import datetime
 
 from backend.app.models import JobPosting, Application, ApplicationMethod, ApplicationStatus
@@ -16,6 +16,10 @@ class DuplicateApplicationError(Exception):
 
 
 class JobPostingNotFoundError(Exception):
+    pass
+
+
+class ApplicationNotFoundError(Exception):
     pass
 
 
@@ -115,4 +119,22 @@ def get_job_applications(
     applications = session.scalars(applications_stmt).all()
 
     return applications, total
+
+
+def get_job_application(
+    session: Session, 
+    application_id: int
+) -> Application:
+    stmt = (
+        select(Application)
+        .where(Application.id == application_id)
+        .options(joinedload(Application.job_posting))
+    )
+    application = session.execute(stmt).scalars().one_or_none()
+
+    if not application:
+        raise ApplicationNotFoundError
+
+    return application
+
     
