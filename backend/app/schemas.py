@@ -1,4 +1,3 @@
-from sqlalchemy.orm import declarative_base
 from typing import Annotated
 from pydantic import AliasPath, BaseModel, ConfigDict, Field, HttpUrl, PlainSerializer
 
@@ -26,19 +25,12 @@ class JobPostingResponse(BaseModel):
     id: int
     title: str
     company: str
-    url: str
+    url: str | None
     saved_at: DateOnly
     location: str | None 
     salary: str | None
     note: str | None 
     cover_letter_required: bool
-
-
-# class JobPostingListResponse(BaseModel):
-#     items: list[JobPostingResponse]
-#     page: int = Field(gt=0)
-#     page_size: int = Field(gt=0)
-#     total: int = Field(ge=0)
 
 
 class JobPostingCreate(BaseModel):
@@ -87,15 +79,6 @@ class ApplicationDetail(BaseModel):
     last_response_at: DateOnly | None
 
 
-class ApplicationListResponse(PaginatedResponse[ApplicationListItem]):
-    pass
-
-
-class JobPostingListResponse(PaginatedResponse[JobPostingResponse]):
-    pass
-
-
-# Applications
 class ApplicationCreate(BaseModel):
     job_posting_id: int
     how_applied: ApplicationMethod

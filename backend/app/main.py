@@ -37,7 +37,7 @@ def job_postings(
     "/job-postings",
     response_model = JobPostingResponse,
     status_code=status.HTTP_201_CREATED
-    )
+)
 def create_job(job: JobPostingCreate, session: Session = Depends(get_session)):
     try:
         return create_job_posting(session, job)
