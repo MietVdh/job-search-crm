@@ -2,8 +2,9 @@ import pytest
 from datetime import datetime
 from fastapi.testclient import TestClient
 from backend.app.main import app, get_session
+from backend.app.models import ApplicationMethod, ApplicationStatus
 from backend.app.schemas import JobPostingResponse
-from tests.helpers import create_test_job_posting
+from tests.helpers import create_test_job_posting, create_test_application
 
 
 client = TestClient(app)
@@ -128,6 +129,146 @@ def test_get_job_postings_returns_empty_page_when_page_is_beyond_end(session, te
     create_test_job_posting(session, title="C", saved_at=datetime(2026, 1, 1, 12, 0, 0))
 
     response = client.get("/job-postings?page=3&page_size=2")
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["total"] == 3
+    assert data["items"] == []
+
+
+# /applications
+def test_get_applications_returns_empty_page_when_database_is_empty(session, test_session_override):
+    response = client.get("/applications")
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["page"] == 1
+    assert data["page_size"] == 25
+    assert data["total"] == 0
+    assert data["items"] == []
+
+
+def test_get_applications_returns_requested_page_and_total(session, test_session_override):
+    # Create three postings
+    posting_a = create_test_job_posting(session, title="A", saved_at=datetime(2026, 1, 3, 12, 0, 0))
+    posting_b = create_test_job_posting(session, title="B", saved_at=datetime(2026, 1, 2, 12, 0, 0))
+    posting_c = create_test_job_posting(session, title="C", saved_at=datetime(2026, 1, 1, 12, 0, 0))
+
+    # Create three applications
+    create_test_application(session, posting_a.id, applied_at=datetime(2026, 1, 10, 14, 15))
+    create_test_application(session, posting_b.id, applied_at=datetime(2026, 1, 10, 14, 25))
+    create_test_application(session, posting_c.id, applied_at=datetime(2026, 1, 10, 14, 20))
+
+    response = client.get("/applications?page=1&page_size=2")
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data["page"] == 1
+    assert data["page_size"] == 2
+    assert data["total"] == 3
+    assert [application["job_title"] for application in data["items"]] == ["B", "C"]
+
+
+def test_get_applications_serializes_application_list_item(session, test_session_override):
+    # Create three postings
+    posting_a = create_test_job_posting(session, title="A", saved_at=datetime(2026, 1, 3, 12, 0, 0))
+    posting_b = create_test_job_posting(session, title="B", saved_at=datetime(2026, 1, 2, 12, 0, 0))
+    posting_c = create_test_job_posting(session, title="C", saved_at=datetime(2026, 1, 1, 12, 0, 0))
+
+    # Create three applications
+    create_test_application(session, posting_a.id, applied_at=datetime(2026, 1, 10, 14, 15))
+    application_b = create_test_application(
+        session, 
+        posting_b.id, 
+        applied_at=datetime(2026, 1, 10, 14, 25), 
+        how_applied=ApplicationMethod.EMAIL,
+        status=ApplicationStatus.INVITED_TO_TEST,
+        last_response_at=datetime(2026, 2, 3, 12, 0)
+    )
+    create_test_application(session, posting_c.id, applied_at=datetime(2026, 1, 10, 14, 20))
+
+    response = client.get("/applications?page=1&page_size=2")
+    assert response.status_code == 200
+    data = response.json()
+
+    first_returned_application = data["items"][0]
+    second_returned_application = data["items"][1]
+    assert first_returned_application["job_title"] == "B"
+    assert first_returned_application["company"] == "Test Company"
+    assert first_returned_application["applied_at"] == "2026-01-10"
+    assert first_returned_application["how_applied"] == "email"
+    assert first_returned_application["last_response_at"] == "2026-02-03"
+    assert first_returned_application["status"] == "invited_to_test"
+    assert first_returned_application["job_posting_id"] == posting_b.id
+    assert first_returned_application["id"] == application_b.id
+
+    assert second_returned_application["last_response_at"] is None
+    assert second_returned_application["job_title"] == "C"
+
+
+def test_get_applications_orders_applications_by_application_date_and_id(session, test_session_override):
+    # Create three postings
+    posting_a = create_test_job_posting(session, title="A", saved_at=datetime(2026, 1, 3, 12, 0, 0))
+    posting_b = create_test_job_posting(session, title="B", saved_at=datetime(2026, 1, 2, 12, 0, 0))
+    posting_c = create_test_job_posting(session, title="C", saved_at=datetime(2026, 1, 1, 12, 0, 0))
+
+    # Create three applications
+    create_test_application(session, posting_a.id, applied_at=datetime(2026, 1, 10, 14, 25))
+    create_test_application(session, posting_b.id, applied_at=datetime(2026, 1, 10, 14, 25))
+    create_test_application(session, posting_c.id, applied_at=datetime(2026, 1, 10, 14, 20))
+
+    response = client.get("/applications?page=1&page_size=2")
+    assert response.status_code == 200
+    data = response.json()
+
+    # A and B have the same applied_at; B has the higher id
+    assert [application["job_title"] for application in data["items"]] == ["B", "A"]
+
+
+def test_get_applications_uses_default_pagination_parameters(session, test_session_override):
+    # Create two postings
+    posting_a = create_test_job_posting(session, title="A", saved_at=datetime(2026, 1, 3, 12, 0, 0))
+    posting_b = create_test_job_posting(session, title="B", saved_at=datetime(2026, 1, 2, 12, 0, 0))
+ 
+    # Create two applications
+    create_test_application(session, posting_a.id, applied_at=datetime(2026, 1, 10, 14, 20))
+    create_test_application(session, posting_b.id, applied_at=datetime(2026, 1, 10, 14, 25))
+    
+    response = client.get("/applications")
+    assert response.status_code == 200
+    data = response.json()
+    
+    assert data["page"] == 1
+    assert data["page_size"] == 25
+    assert data["total"] == 2
+
+
+@pytest.mark.parametrize(
+    "query_string",
+    [
+        pytest.param("?page=0", id="page-zero"),
+        pytest.param("?page_size=0", id="page-size-zero"),
+        pytest.param("?page_size=51", id="page-size-too-large"),
+    ],
+)
+def test_get_applications_rejects_invalid_pagination_parameters(query_string):
+    
+    response = client.get(f"/applications{query_string}")
+    assert response.status_code == 422
+
+
+def test_get_applications_returns_empty_page_when_page_is_beyond_end(session, test_session_override):
+    # Create three postings
+    posting_a = create_test_job_posting(session, title="A", saved_at=datetime(2026, 1, 3, 12, 0, 0))
+    posting_b = create_test_job_posting(session, title="B", saved_at=datetime(2026, 1, 2, 12, 0, 0))
+    posting_c = create_test_job_posting(session, title="C", saved_at=datetime(2026, 1, 1, 12, 0, 0))
+
+    # Create three applications
+    create_test_application(session, posting_a.id, applied_at=datetime(2026, 1, 10, 14, 20))
+    create_test_application(session, posting_b.id, applied_at=datetime(2026, 1, 10, 14, 25))
+    create_test_application(session, posting_c.id, applied_at=datetime(2026, 1, 10, 14, 15))
+
+    response = client.get("/applications?page=3&page_size=2")
     assert response.status_code == 200
     data = response.json()
 

@@ -11,6 +11,15 @@ DateOnly = Annotated[
     PlainSerializer(lambda dt: dt.date(), return_type=date)
 ]
 
+
+class PaginatedResponse[T](BaseModel):
+    items: list[T]
+    page: int = Field(gt=0)
+    page_size: int = Field(gt=0)
+    total: int = Field(ge=0)
+
+
+
 class JobPostingResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -25,11 +34,11 @@ class JobPostingResponse(BaseModel):
     cover_letter_required: bool
 
 
-class JobPostingListResponse(BaseModel):
-    items: list[JobPostingResponse]
-    page: int = Field(gt=0)
-    page_size: int = Field(gt=0)
-    total: int = Field(ge=0)
+# class JobPostingListResponse(BaseModel):
+#     items: list[JobPostingResponse]
+#     page: int = Field(gt=0)
+#     page_size: int = Field(gt=0)
+#     total: int = Field(ge=0)
 
 
 class JobPostingCreate(BaseModel):
@@ -77,6 +86,13 @@ class ApplicationDetail(BaseModel):
     status: ApplicationStatus
     last_response_at: DateOnly | None
 
+
+class ApplicationListResponse(PaginatedResponse[ApplicationListItem]):
+    pass
+
+
+class JobPostingListResponse(PaginatedResponse[JobPostingResponse]):
+    pass
 
 
 # Applications

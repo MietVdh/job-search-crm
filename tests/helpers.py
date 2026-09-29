@@ -44,13 +44,15 @@ def create_test_application(
         job_posting_id: int,
         applied_at: datetime | None = None,
         how_applied: ApplicationMethod = ApplicationMethod.COMPANY_WEBSITE,
-        status: ApplicationStatus = ApplicationStatus.APPLIED
+        status: ApplicationStatus = ApplicationStatus.APPLIED,
+        last_response_at: datetime | None = None
 ) -> Application:
     application = Application(
         job_posting_id=job_posting_id,
         applied_at=applied_at,
         how_applied=how_applied,
-        status=status
+        status=status,
+        last_response_at=last_response_at
     )
 
     session.add(application)
