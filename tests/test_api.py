@@ -274,4 +274,42 @@ def test_get_applications_returns_empty_page_when_page_is_beyond_end(session, te
 
     assert data["total"] == 3
     assert data["items"] == []
+
+
+def test_get_single_application_returns_correct_fields(session, test_session_override):
+    posting = create_test_job_posting(session, title="B", saved_at=datetime(2026, 1, 2, 12, 0, 0))
+    application = create_test_application(
+        session, 
+        posting.id, 
+        applied_at=datetime(2026, 1, 10, 14, 25), 
+        how_applied=ApplicationMethod.EMAIL,
+        status=ApplicationStatus.INVITED_TO_TEST,
+        last_response_at=datetime(2026, 2, 3, 12, 0)
+    )
+
+    response = client.get(f"/applications/{application.id}")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["job_title"] == "B"
+    assert data["company"] == "Test Company"
+    assert data["applied_at"] == "2026-01-10"
+    assert data["how_applied"] == "email"
+    assert data["last_response_at"] == "2026-02-03"
+    assert data["status"] == "invited_to_test"
+    assert data["job_posting_id"] == posting.id
+    assert data["id"] == application.id
+    assert data["note"] is None
+
+
+def test_get_single_application_with_nonexistent_id_returns_404_error(session, test_session_override):
+    response = client.get("/applications/9999")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Application not found"
+
+
+def test_get_single_application_with_invalid_path_parameter_returns_422_error(session, test_session_override):
+    response = client.get("/applications/foo")
     
+    assert response.status_code == 422

@@ -3,8 +3,9 @@ from sqlalchemy.orm import Session
 from typing import Annotated
 
 from .database import get_session
-from .crud import get_job_postings, create_job_posting, DuplicateJobPostingError, get_job_applications
-from .schemas import ApplicationListItem, JobPostingResponse, JobPostingCreate, PaginatedResponse
+from .crud import get_job_postings, create_job_posting, DuplicateJobPostingError 
+from .crud import ApplicationNotFoundError, get_job_application, get_job_applications
+from .schemas import ApplicationDetail, ApplicationListItem, JobPostingResponse, JobPostingCreate, PaginatedResponse
 
 app = FastAPI()
 
@@ -62,5 +63,17 @@ def get_applications(
         page_size=page_size,
         total=total
     )
+
+
+@app.get("/applications/{application_id}", response_model=ApplicationDetail)
+def get_application(application_id: int, session: Session = Depends(get_session)):
+    try:
+        application = get_job_application(session, application_id)
+        return application
+    except ApplicationNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application not found"
+        )
 
 
