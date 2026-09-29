@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime
+from datetime import date, datetime
 from fastapi.testclient import TestClient
 from backend.app.main import app, get_session
 from backend.app.models import ApplicationMethod, ApplicationStatus
@@ -312,4 +312,85 @@ def test_get_single_application_with_nonexistent_id_returns_404_error(session, t
 def test_get_single_application_with_invalid_path_parameter_returns_422_error(session, test_session_override):
     response = client.get("/applications/foo")
     
+    assert response.status_code == 422
+
+
+def test_create_application_returns_application_detail(session, test_session_override):
+    posting = create_test_job_posting(session, title="B", saved_at=datetime(2026, 1, 2, 12, 0, 0))
+    payload = {
+        "job_posting_id": posting.id,
+        "how_applied": "email"
+    }
+
+    response = client.post("/applications", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["how_applied"] == "email"
+    assert data["status"] == "applied"
+    assert data["job_title"] == "B"
+    assert data["saved_at"] == "2026-01-02"
+    assert data["location"] is None
+    assert data["salary"] is None
+    assert data["note"] is None
+    assert data["cover_letter_required"] is False
+    assert data["last_response_at"] is None
+    assert data["applied_at"] == str(date.today())
+
+
+def test_create_application_with_historical_applied_at_returns_application_detail(session, test_session_override):
+    posting = create_test_job_posting(session, title="B", saved_at=datetime(2026, 1, 2, 12, 0, 0))
+    payload = {
+        "job_posting_id": posting.id,
+        "how_applied": "email",
+        "applied_at": "2026-01-10"
+    }
+
+    response = client.post("/applications", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["applied_at"] == "2026-01-10"
+
+
+def test_create_duplicate_application_returns_409_error(session, test_session_override):
+    posting = create_test_job_posting(session, title="B", saved_at=datetime(2026, 1, 2, 12, 0, 0))
+    payload = {
+        "job_posting_id": posting.id,
+        "how_applied": "email"
+    }
+    first_response = client.post("/applications", json=payload)
+    assert first_response.status_code == 201
+
+    response = client.post("/applications", json=payload)
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == "An application associated with that job posting already exists"
+
+
+def test_create_application_for_nonexistent_job_posting_returns_404_error(session, test_session_override):
+    payload = {
+        "job_posting_id": 9999,
+        "how_applied": "email"
+    }
+
+    response = client.post("/applications", json=payload)
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Job posting not found"
+
+
+def test_create_application_with_invalid_request_body_returns_422_error(session, test_session_override):
+    posting = create_test_job_posting(session, title="B", saved_at=datetime(2026, 1, 2, 12, 0, 0))
+    payload = {
+        "job_posting_id": posting.id,
+        "foo": "bar"
+    }
+
+    response = client.post("/applications", json=payload)
+    assert response.status_code == 422
+
+    payload = {
+        "job_posting_id": posting.id,
+        "how_applied": "carrier_pigeon"
+    }
+
+    response = client.post("/applications", json=payload)
     assert response.status_code == 422

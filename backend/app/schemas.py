@@ -44,7 +44,7 @@ class JobPostingResponse(BaseModel):
 class JobPostingCreate(BaseModel):
     title: str = Field(max_length=200)
     company: str = Field(max_length=200)
-    url: HttpUrl
+    url: HttpUrl | None = None
     location: str | None = Field(default=None, max_length=200)
     salary: str | None = Field(default=None, max_length=100)
     note: str | None = None
@@ -97,4 +97,6 @@ class JobPostingListResponse(PaginatedResponse[JobPostingResponse]):
 
 # Applications
 class ApplicationCreate(BaseModel):
-    pass
+    job_posting_id: int
+    how_applied: ApplicationMethod
+    applied_at: date | None = None

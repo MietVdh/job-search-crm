@@ -4,8 +4,9 @@ from typing import Annotated
 
 from .database import get_session
 from .crud import get_job_postings, create_job_posting, DuplicateJobPostingError 
-from .crud import ApplicationNotFoundError, get_job_application, get_job_applications
-from .schemas import ApplicationDetail, ApplicationListItem, JobPostingResponse, JobPostingCreate, PaginatedResponse
+from .crud import create_application as create_application_crud
+from .crud import ApplicationNotFoundError, get_job_application, get_job_applications, DuplicateApplicationError, JobPostingNotFoundError
+from .schemas import ApplicationDetail, ApplicationListItem, ApplicationCreate, JobPostingResponse, JobPostingCreate, PaginatedResponse
 
 app = FastAPI()
 
@@ -76,4 +77,24 @@ def get_application(application_id: int, session: Session = Depends(get_session)
             detail="Application not found"
         )
 
+
+@app.post(
+    "/applications",
+    response_model=ApplicationDetail,
+    status_code=status.HTTP_201_CREATED
+)
+def create_application(application: ApplicationCreate, session: Session = Depends(get_session)):
+    try:
+        created_application = create_application_crud(session, application)
+        return get_job_application(session, created_application.id)
+    except DuplicateApplicationError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An application associated with that job posting already exists"
+        )
+    except JobPostingNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job posting not found"
+        )
 

@@ -1,10 +1,10 @@
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import joinedload, Session, selectinload
-from datetime import datetime
+from datetime import datetime, time
 
 from backend.app.models import JobPosting, Application, ApplicationMethod, ApplicationStatus
-from .schemas import JobPostingCreate
+from .schemas import JobPostingCreate, ApplicationCreate
 
 
 class DuplicateJobPostingError(Exception):
@@ -68,26 +68,58 @@ def create_job_posting(session: Session, job_posting: JobPostingCreate) -> JobPo
 
 # Applications
 
+# def create_job_application(
+#     session: Session,
+#     job_posting_id: int,
+#     how_applied: ApplicationMethod,
+#     *,
+#     applied_at: datetime | None = None
+# ) -> Application:
+#     if applied_at is None:
+#         applied_at = datetime.now()
+#     application = Application(
+#         job_posting_id=job_posting_id,
+#         applied_at=applied_at,
+#         how_applied=how_applied,
+#     )
+
+#     try:
+#         session.add(application)
+#         session.commit()
+#         session.refresh(application)
+#         return application
+    
+#     except IntegrityError as e:
+#         session.rollback()
+
+#         if "UNIQUE" in str(e.orig) and "applications.job_posting_id" in str(e.orig) :
+#             raise DuplicateApplicationError()
+
+#         if "FOREIGN KEY" in str(e.orig):
+#             raise JobPostingNotFoundError()
+        
+#         raise
+
+
 def create_application(
     session: Session,
-    job_posting_id: int,
-    how_applied: ApplicationMethod,
-    *,
-    applied_at: datetime | None = None
+    application: ApplicationCreate
 ) -> Application:
-    if applied_at is None:
+    if application.applied_at is None:
         applied_at = datetime.now()
-    application = Application(
-        job_posting_id=job_posting_id,
+    else: 
+        applied_at = datetime.combine(application.applied_at, time.min)
+    job_application = Application(
+        job_posting_id=application.job_posting_id,
         applied_at=applied_at,
-        how_applied=how_applied,
+        how_applied=application.how_applied,
     )
 
     try:
-        session.add(application)
+        session.add(job_application)
         session.commit()
-        session.refresh(application)
-        return application
+        session.refresh(job_application)
+        return job_application
     
     except IntegrityError as e:
         session.rollback()
