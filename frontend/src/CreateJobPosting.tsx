@@ -15,7 +15,6 @@ function CreateJobPosting() {
 
     const handleFormSubmit = (e: React.SubmitEvent) => {
         e.preventDefault();
-        console.log("Handling form submission");
 
         const form = e.currentTarget as HTMLFormElement;
         const formData = new FormData(form);
@@ -31,7 +30,6 @@ function CreateJobPosting() {
         }
 
         const title = getString(formData, "title");
-        console.log("title", title);
         const company = getString(formData, "company");
         const cover_letter_required = formData.has("cover_letter_required");
 
@@ -57,30 +55,14 @@ function CreateJobPosting() {
         titleInput.setCustomValidity("");
         companyInput.setCustomValidity("");
 
-        console.log("After clearing:", {
-            title: titleInput.validity.valid,
-            titleMessage: titleInput.validationMessage,
-            company: companyInput.validity.valid,
-            companyMessage: companyInput.validationMessage,
-        });
-
         if (!title) {
             titleInput.setCustomValidity("Title cannot be blank.");
             console.log("Title cannot be blank");
         } 
 
-
         if (!company) {
             companyInput.setCustomValidity("Company cannot be blank.");
         } 
-
-        console.log("After clearing:", {
-            title: titleInput.validity.valid,
-            titleMessage: titleInput.validationMessage,
-            company: companyInput.validity.valid,
-            companyMessage: companyInput.validationMessage,
-        });
-
 
         if (!title || !company) {
             form.reportValidity();
@@ -99,15 +81,11 @@ function CreateJobPosting() {
             ...(note && { note })
         };
 
-        // POST /job-postings
-        console.log(jobPosting);
-
         // if success
         navigate(returnTo, {
             state: { message: "Job posting created." }
         });
     }
-
 
 
     return (
