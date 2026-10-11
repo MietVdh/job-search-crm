@@ -2,6 +2,7 @@ import { Routes, Route, Link } from 'react-router'
 import ApplicationsPage from './ApplicationsPage'
 import ApplicationDetail from './ApplicationDetail'
 import Home from './Home'
+import CreateJobPosting from './CreateJobPosting'
  
 
 const NotFound = () => (
@@ -19,6 +20,10 @@ function App() {
       <Route 
         path="/" 
         element={<Home />} 
+      />
+      <Route 
+        path="job-postings/new" 
+        element={<CreateJobPosting />} 
       />
       <Route 
         path="applications" 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { fetchApplications } from './api/applications'
-import { Link, useSearchParams } from 'react-router'
+import type { CreateJobPostingLocationState } from './api/jobPostings'
 import type { PaginatedApplicationResponse } from './api/applications'
 
 
@@ -9,46 +10,38 @@ function ApplicationsPage() {
   const [response, setResponse] = useState<PaginatedApplicationResponse | null>(null)
   const [error, setError] = useState<Error | null>(null)
   const [page, setPage] = useState(1);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const hasData = response !== null && response.total > 0;
   const totalPages = response
     ? Math.ceil(response.total / response.page_size)
     : 0;
 
-  const isValidPageParam = (Number.isInteger(searchParams.get("page")) 
-                        && Number(searchParams.get("page")) > 0 
-                        && Number(searchParams.get("page")) <= totalPages);
-
-  let pageParam: number = isValidPageParam ? Number(searchParams.get("page")) : 1;
    
-  
+  // Button behaviour
   const handlePreviousClick = () => {
-    // setSearchParams({ page: (pageParam - 1).toString()});
-    // pageParam -= 1;
     setPage(page -1);
   }
 
   const handleNextClick = () => {
-    // setSearchParams({ page: (pageParam + 1).toString()});
-    // pageParam += 1;
     setPage(page + 1);
   }
 
-  // useEffect(() => {
-  //   // Normalize URL 
-  //   if (searchParams.get("page") === null) {
-  //       setSearchParams({});
-  //       pageParam = 1;
-  //   } else if (isValidPageParam) {
-  //       pageParam = Number(searchParams.get("page"));
-  //       setSearchParams({page: pageParam.toString()});
-  //   } else {
-  //       setSearchParams({});
-  //   }
-  // }, [isValidPageParam]);
+    
+  const handleNewPosting = () => {
+    const statePayload: CreateJobPostingLocationState = {
+      from: location.pathname + location.search + location.hash
+    }
+    navigate("/job-postings/new", {
+      state: statePayload
+    });
+  }
+ 
 
-
+  // Fetch applications
   useEffect(() => {
 
     fetchApplications(page)
@@ -56,24 +49,91 @@ function ApplicationsPage() {
       setResponse(response);
       setError(null);
       setIsLoading(false);
-    //   setSearchParams({page: pageParam.toString()});
     })
     .catch((error) => {
       setError(error);
       setIsLoading(false);
       setResponse(null);
-      setSearchParams({});
     })
 
   }, [page]);
 
+
+  // If redirect after successfully creating job posting
+  const message = location.state?.message;
+
+  useEffect(() => {
+    if (!message) {
+      return;
+    }
+
+    setSuccessMessage(message);
+
+    // Replace current history entry to clear state
+    navigate(".", { 
+      replace: true, 
+      state: null 
+    });
+  }, [message, navigate]);
+
+
+  // Display notification
+  useEffect(() => {
+    if (!successMessage) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      setSuccessMessage(null);
+    }, 3000);
+
+    return () => {
+      clearTimeout(timeoutId);
+    }
+  }, [successMessage])
+
+  // Rendering 
+
+  if (isLoading) {
+    return (
+      <main className="max-w-3xl m-auto py-6">
+          <h2>Loading...</h2>
+      </main>
+    )
+  }
+
+
+  if (error) {
+    return (
+      <div className="max-w-3xl m-auto py-6">
+          <h2>{error.message}</h2>
+          <Link to="/applications">Back to Applications</Link>
+      </div>
+    )
+  }
+
+  if (response?.total === 0 || !hasData) {
+    return (
+      <div className="max-w-3xl m-auto py-6">
+          <h2>No applications found</h2>
+          <Link to="/applications">Back to Applications</Link>
+      </div>
+    )
+  }
+
+
   return (
     <main className="max-w-3xl m-auto py-8">
       <h1 className="text-center text-2xl font-bold my-5">Applications</h1>
-      <p>{isLoading ? "Loading..." : ""}</p>
-      <p>{error ? error.message : ""}</p>
-      <p>{response?.total === 0 ? "No applications found" : ""}</p>
-      {hasData && <table className="w-full">
+      <button 
+        className="bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-700" 
+        onClick={handleNewPosting}
+      >
+        Add job posting
+      </button>
+      {successMessage && <h2 className="text-center text-lg font-bold my-5">{successMessage}</h2>}
+
+      <table className="w-full">
         <thead className="font-bold text-left border-b">
           <tr>
             <th className="pb-2 px-3">Job Title</th>
@@ -97,20 +157,20 @@ function ApplicationsPage() {
           ))}
         </tbody>
       </table> 
-      }
-      {hasData && <div className="py-6 m-auto max-w-lg text-center">
+    
+      <div className="py-6 m-auto max-w-lg text-center">
         <button 
           className="bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50" 
           disabled={page === 1} 
           onClick={handlePreviousClick}
         >Previous</button>
-        <span className="px-8">Page {pageParam} of {totalPages}</span>
+        <span className="px-8">Page {page} of {totalPages}</span>
         <button 
           className="bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           disabled={page === totalPages} 
           onClick={handleNextClick}
         >Next</button>
-      </div>}
+      </div>
     </main>
   )
 }
