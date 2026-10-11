@@ -45,7 +45,7 @@ def create_job_posting(session: Session, job_posting: JobPostingCreate) -> JobPo
     job = JobPosting(
         title=job_posting.title,
         company=job_posting.company,
-        url=str(job_posting.url),
+        url=str(job_posting.url) if job_posting.url is not None else None,
         location=job_posting.location,
         salary=job_posting.salary,
         note=job_posting.note,
