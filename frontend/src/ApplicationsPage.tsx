@@ -107,7 +107,7 @@ function ApplicationsPage() {
     return (
       <div className="max-w-3xl m-auto py-6">
           <h2>{error.message}</h2>
-          <Link to="/applications">Back to Applications</Link>
+          <Link to="/">Home</Link>
       </div>
     )
   }
@@ -116,7 +116,7 @@ function ApplicationsPage() {
     return (
       <div className="max-w-3xl m-auto py-6">
           <h2>No applications found</h2>
-          <Link to="/applications">Back to Applications</Link>
+          <Link to="/">Home</Link>
       </div>
     )
   }

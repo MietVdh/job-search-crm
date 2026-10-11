@@ -1,11 +1,13 @@
-// import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 // import { createJobPosting } from './api/jobPostings';
 // import type { JobPostingCreate } from './api/jobPostings';
 
 import { Link, useLocation, useNavigate } from 'react-router';
-import type { JobPostingCreate, CreateJobPostingLocationState } from "./api/jobPostings";
+import { type JobPostingCreate, type CreateJobPostingLocationState, createJobPosting } from "./api/jobPostings";
 
 function CreateJobPosting() {
+    const [errorMessage, setErrorMessage] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const location = useLocation();
     const navigate = useNavigate();
@@ -13,8 +15,11 @@ function CreateJobPosting() {
     const state = location.state as CreateJobPostingLocationState | null;
     const returnTo = state?.from ?? "/applications";
 
-    const handleFormSubmit = (e: React.SubmitEvent) => {
+    const handleFormSubmit = async (e: React.SubmitEvent) => {
         e.preventDefault();
+
+        setErrorMessage(""); 
+        setIsSubmitting(true);
 
         const form = e.currentTarget as HTMLFormElement;
         const formData = new FormData(form);
@@ -81,10 +86,20 @@ function CreateJobPosting() {
             ...(note && { note })
         };
 
-        // if success
-        navigate(returnTo, {
-            state: { message: "Job posting created." }
-        });
+        try {
+            await createJobPosting(jobPosting);
+            // if success, return user to page they came from
+            navigate(returnTo, {
+                state: { message: "Job posting created." }
+            });
+        } catch (error) {
+            setErrorMessage("Unable to create the job posting. Please try again.");
+            console.error(error);
+        } finally {
+            setIsSubmitting(false);
+        }
+
+        
     }
 
 
@@ -95,7 +110,16 @@ function CreateJobPosting() {
             Go Back
             </Link>
 
+            <h1 className="text-center text-2xl font-bold my-5">New Job Posting</h1>
+
+
             <form onSubmit={handleFormSubmit}>
+                {errorMessage && (
+                    <p role="alert" className="text-red-600">
+                        {errorMessage}
+                    </p>
+                )}
+
                 <label htmlFor="title">Title</label>
                 <input 
                     id="title"
@@ -147,7 +171,11 @@ function CreateJobPosting() {
                     value="true"
                 />
                 <label htmlFor="cover-letter-required">Cover letter required</label>
-                <button className="bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-700" type="submit">Create Job Posting</button>
+                <button 
+                    className="bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-700" 
+                    type="submit"
+                    disabled = {isSubmitting}
+                >{isSubmitting ? "Creating..." : "Create Job Posting"}</button>
             </form>
         </main>
     
